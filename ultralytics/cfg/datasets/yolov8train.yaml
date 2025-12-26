@@ -4,4 +4,4 @@ val: ../images/val
 test: ../images/test
 
 nc: 2
-names: ['smoke', 'fire']
+names: ["smoke", "fire"]

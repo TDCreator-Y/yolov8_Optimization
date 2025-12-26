@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from torchvision.ops import DeformConv2d
 
@@ -6,10 +5,9 @@ from ultralytics.nn.modules.block import C2f  # 原版C2f
 
 
 class DCNBottleneck(nn.Module):
+    """DCN Bottleneck that keeps channels unchanged. 输入输出通道固定为 c（=C2f内部hidden通道 self.c）.
     """
-    DCN Bottleneck that keeps channels unchanged.
-    输入输出通道固定为 c（=C2f内部hidden通道 self.c）
-    """
+
     def __init__(self, c: int, shortcut: bool = True, k: int = 3):
         super().__init__()
         p = k // 2
@@ -33,10 +31,9 @@ class DCNBottleneck(nn.Module):
 
 
 class DCN_C2f(C2f):
+    """继承官方 C2f，不改 split/concat/cv1/cv2 的所有逻辑， 只替换内部 self.m（原本是 Bottleneck）为 DCNBottleneck。.
     """
-    继承官方 C2f，不改 split/concat/cv1/cv2 的所有逻辑，
-    只替换内部 self.m（原本是 Bottleneck）为 DCNBottleneck。
-    """
+
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         super().__init__(c1, c2, n=n, shortcut=shortcut, g=g, e=e)
 
