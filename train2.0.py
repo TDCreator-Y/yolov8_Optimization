@@ -1,8 +1,6 @@
 import warnings
-warnings.filterwarnings(
-    "ignore",
-    message=".*adaptive_avg_pool2d_backward_cuda.*"
-)
+
+warnings.filterwarnings("ignore", message=".*adaptive_avg_pool2d_backward_cuda.*")
 
 from ultralytics import YOLO
 

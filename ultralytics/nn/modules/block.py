@@ -8,8 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ultralytics.nn.modules.dcn_conv import DCNConv
-
-
 from ultralytics.utils.torch_utils import fuse_conv_and_bn
 
 from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad
@@ -478,8 +476,9 @@ class Bottleneck(nn.Module):
         """Apply bottleneck with optional shortcut connection."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
 class DCN_Bottleneck(nn.Module):
-    """Bottleneck with DCN in 3x3 conv"""
+    """Bottleneck with DCN in 3x3 conv."""
 
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5):
         super().__init__()
@@ -492,25 +491,22 @@ class DCN_Bottleneck(nn.Module):
         y = self.cv2(self.cv1(x))
         return x + y if self.add else y
 
+
 class DCN_C2f(nn.Module):
-    """C2f with DCN Bottleneck"""
+    """C2f with DCN Bottleneck."""
 
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
         super().__init__()
         self.c = int(c2 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv((2 + n) * self.c, c2, 1)
-        self.m = nn.ModuleList(
-            DCN_Bottleneck(self.c, self.c, shortcut, g, e=1.0)
-            for _ in range(n)
-        )
+        self.m = nn.ModuleList(DCN_Bottleneck(self.c, self.c, shortcut, g, e=1.0) for _ in range(n))
 
     def forward(self, x):
         y = list(self.cv1(x).chunk(2, 1))
         for m in self.m:
             y.append(m(y[-1]))
         return self.cv2(torch.cat(y, 1))
-
 
 
 class BottleneckCSP(nn.Module):
