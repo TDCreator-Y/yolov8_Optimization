@@ -5,25 +5,22 @@ import torch.nn as nn
 
 class h_swish(nn.Module):
     """Hard-Swish activation used in many CoordAtt implementations."""
+
     def forward(self, x):
         return x * torch.clamp(x + 3.0, min=0.0, max=6.0) / 6.0
 
 
 class h_sigmoid(nn.Module):
     """Hard-Sigmoid activation."""
+
     def forward(self, x):
         return torch.clamp(x + 3.0, min=0.0, max=6.0) / 6.0
 
 
 class CoordAtt(nn.Module):
-    """
-    Coordinate Attention (CoordAtt)
-    Paper: "Coordinate Attention for Efficient Mobile Network Design" (CVPR 2021)
-    Matches the description in your target paper Section 2.3.3:
-      - Pool along H and W separately (1D encodings)
-      - Concat -> 1x1 conv + BN + activation
-      - Split -> two 1x1 conv -> sigmoid
-      - Multiply back to input feature map
+    """Coordinate Attention (CoordAtt) Paper: "Coordinate Attention for Efficient Mobile Network Design" (CVPR 2021)
+    Matches the description in your target paper Section 2.3.3: - Pool along H and W separately (1D encodings) -
+    Concat -> 1x1 conv + BN + activation - Split -> two 1x1 conv -> sigmoid - Multiply back to input feature map.
     """
 
     def __init__(self, inp: int, reduction: int = 32, use_hs: bool = True):
@@ -31,7 +28,7 @@ class CoordAtt(nn.Module):
         Args:
             inp: input channels C
             reduction: channel reduction ratio (commonly 32)
-            use_hs: whether to use hard-swish/hard-sigmoid (recommended)
+            use_hs: whether to use hard-swish/hard-sigmoid (recommended).
         """
         super().__init__()
         self.inp = inp
@@ -55,15 +52,13 @@ class CoordAtt(nn.Module):
         self.sigmoid = h_sigmoid() if use_hs else nn.Sigmoid()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """x: (B, C, H, W) returns: (B, C, H, W).
         """
-        x: (B, C, H, W)
-        returns: (B, C, H, W)
-        """
-        b, c, h, w = x.shape
+        _b, _c, h, w = x.shape
 
         # 1) 1D global pooling along H and W directions
-        x_h = self.pool_h(x)           # (B, C, H, 1)
-        x_w = self.pool_w(x)           # (B, C, 1, W)
+        x_h = self.pool_h(x)  # (B, C, H, 1)
+        x_w = self.pool_w(x)  # (B, C, 1, W)
         x_w = x_w.permute(0, 1, 3, 2)  # (B, C, W, 1)  so we can concat on "spatial" dim
 
         # 2) concat along spatial dim (H + W)
@@ -76,10 +71,10 @@ class CoordAtt(nn.Module):
 
         # 4) split and generate two attention maps
         y_h, y_w = torch.split(y, [h, w], dim=2)  # y_h:(B,mip,H,1), y_w:(B,mip,W,1)
-        y_w = y_w.permute(0, 1, 3, 2)            # (B,mip,1,W)
+        y_w = y_w.permute(0, 1, 3, 2)  # (B,mip,1,W)
 
-        a_h = self.sigmoid(self.conv_h(y_h))     # (B,C,H,1)
-        a_w = self.sigmoid(self.conv_w(y_w))     # (B,C,1,W)
+        a_h = self.sigmoid(self.conv_h(y_h))  # (B,C,H,1)
+        a_w = self.sigmoid(self.conv_w(y_w))  # (B,C,1,W)
 
         # 5) apply attention
         out = x * a_h * a_w
