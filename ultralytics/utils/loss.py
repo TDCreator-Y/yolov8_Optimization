@@ -13,14 +13,13 @@ from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
 from ultralytics.utils.tal import RotatedTaskAlignedAssigner, TaskAlignedAssigner, dist2bbox, dist2rbox, make_anchors
 from ultralytics.utils.torch_utils import autocast
 
-from .metrics import bbox_iou, probiou
+from .metrics import probiou
 from .tal import bbox2dist
 
 
-#==================================================
+# ==================================================
 def wIoU(pred_boxes, target_boxes, alpha=0.5, beta=2.0, xywh=True, eps=1e-7, clamp_val=4.0, warmup=False):
-    """
-    Weighted IoU (WIoU) loss with stability and warmup improvements
+    """Weighted IoU (WIoU) loss with stability and warmup improvements.
 
     Args:
         pred_boxes: [N,4] tensor, predicted boxes
@@ -35,19 +34,19 @@ def wIoU(pred_boxes, target_boxes, alpha=0.5, beta=2.0, xywh=True, eps=1e-7, cla
         wiou_loss: scalar tensor (mean over batch)
     """
     if xywh:
-        px, py, pw, ph = pred_boxes[:,0], pred_boxes[:,1], pred_boxes[:,2], pred_boxes[:,3]
-        tx, ty, tw, th = target_boxes[:,0], target_boxes[:,1], target_boxes[:,2], target_boxes[:,3]
-        pred_boxes = torch.stack([px - pw/2, py - ph/2, px + pw/2, py + ph/2], dim=1)
-        target_boxes = torch.stack([tx - tw/2, ty - th/2, tx + tw/2, ty + th/2], dim=1)
+        px, py, pw, ph = pred_boxes[:, 0], pred_boxes[:, 1], pred_boxes[:, 2], pred_boxes[:, 3]
+        tx, ty, tw, th = target_boxes[:, 0], target_boxes[:, 1], target_boxes[:, 2], target_boxes[:, 3]
+        pred_boxes = torch.stack([px - pw / 2, py - ph / 2, px + pw / 2, py + ph / 2], dim=1)
+        target_boxes = torch.stack([tx - tw / 2, ty - th / 2, tx + tw / 2, ty + th / 2], dim=1)
 
     # 计算 IoU
-    inter_x1 = torch.max(pred_boxes[:,0], target_boxes[:,0])
-    inter_y1 = torch.max(pred_boxes[:,1], target_boxes[:,1])
-    inter_x2 = torch.min(pred_boxes[:,2], target_boxes[:,2])
-    inter_y2 = torch.min(pred_boxes[:,3], target_boxes[:,3])
+    inter_x1 = torch.max(pred_boxes[:, 0], target_boxes[:, 0])
+    inter_y1 = torch.max(pred_boxes[:, 1], target_boxes[:, 1])
+    inter_x2 = torch.min(pred_boxes[:, 2], target_boxes[:, 2])
+    inter_y2 = torch.min(pred_boxes[:, 3], target_boxes[:, 3])
     inter_area = (inter_x2 - inter_x1).clamp(min=0) * (inter_y2 - inter_y1).clamp(min=0)
-    area1 = (pred_boxes[:,2]-pred_boxes[:,0]) * (pred_boxes[:,3]-pred_boxes[:,1])
-    area2 = (target_boxes[:,2]-target_boxes[:,0]) * (target_boxes[:,3]-target_boxes[:,1])
+    area1 = (pred_boxes[:, 2] - pred_boxes[:, 0]) * (pred_boxes[:, 3] - pred_boxes[:, 1])
+    area2 = (target_boxes[:, 2] - target_boxes[:, 0]) * (target_boxes[:, 3] - target_boxes[:, 1])
     iou = inter_area / (area1 + area2 - inter_area + eps)
 
     if warmup:
@@ -55,15 +54,15 @@ def wIoU(pred_boxes, target_boxes, alpha=0.5, beta=2.0, xywh=True, eps=1e-7, cla
         return (1 - iou).mean()
 
     # 中心点距离
-    px_c = (pred_boxes[:,0] + pred_boxes[:,2]) / 2
-    py_c = (pred_boxes[:,1] + pred_boxes[:,3]) / 2
-    tx_c = (target_boxes[:,0] + target_boxes[:,2]) / 2
-    ty_c = (target_boxes[:,1] + target_boxes[:,3]) / 2
-    center_dist = ((px_c - tx_c)**2 + (py_c - ty_c)**2).sqrt().clamp(max=clamp_val)
+    px_c = (pred_boxes[:, 0] + pred_boxes[:, 2]) / 2
+    py_c = (pred_boxes[:, 1] + pred_boxes[:, 3]) / 2
+    tx_c = (target_boxes[:, 0] + target_boxes[:, 2]) / 2
+    ty_c = (target_boxes[:, 1] + target_boxes[:, 3]) / 2
+    center_dist = ((px_c - tx_c) ** 2 + (py_c - ty_c) ** 2).sqrt().clamp(max=clamp_val)
 
     # 宽高差异
-    wh_pred = pred_boxes[:,2:] - pred_boxes[:,0:2]
-    wh_target = target_boxes[:,2:] - target_boxes[:,0:2]
+    wh_pred = pred_boxes[:, 2:] - pred_boxes[:, 0:2]
+    wh_target = target_boxes[:, 2:] - target_boxes[:, 0:2]
     wh_ratio = torch.log1p(wh_pred / (wh_target + eps)).abs().sum(dim=1).clamp(max=clamp_val)
 
     # 权重
@@ -72,7 +71,10 @@ def wIoU(pred_boxes, target_boxes, alpha=0.5, beta=2.0, xywh=True, eps=1e-7, cla
     # WIoU loss
     wiou_loss = 1 - iou * weight
     return wiou_loss.mean()
-#===================================================
+
+
+# ===================================================
+
 
 class VarifocalLoss(nn.Module):
     """Varifocal loss by Zhang et al.
@@ -182,10 +184,10 @@ class BboxLoss(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute IoU and DFL losses for bounding boxes."""
         weight = target_scores.sum(-1)[fg_mask].unsqueeze(-1)
-#============================================
+        # ============================================
         iou = wIoU(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=True)
         loss_iou = (iou * weight).sum() / target_scores_sum
-#============================================
+        # ============================================
 
         # DFL loss
         if self.dfl_loss:
@@ -908,4 +910,3 @@ class TVPSegmentLoss(TVPDetectLoss):
         vp_loss = self.vp_criterion((vp_feats, pred_masks, proto), batch)
         cls_loss = vp_loss[0][2]
         return cls_loss, vp_loss[1]
-
