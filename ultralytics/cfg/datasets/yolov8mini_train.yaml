@@ -1,0 +1,7 @@
+path: yolov8train
+train: ../images/test
+val: ../images/val
+test: ../images/test
+
+nc: 2
+names: ['smoke', 'fire']
