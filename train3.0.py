@@ -9,9 +9,10 @@ import sys
 sys.path.append(os.path.dirname(__file__))
 
 import torch
+
+from my_modules.dcn_c2f_runtime import DCN_C2f
 from ultralytics import YOLO
 from ultralytics.nn.modules.block import C2f
-from my_modules.dcn_c2f_runtime import DCN_C2f
 
 
 def replace_backbone_c2f_with_dcn(yolo_model):
@@ -33,13 +34,7 @@ def replace_backbone_c2f_with_dcn(yolo_model):
                 shortcut = getattr(m, "shortcut", False)
                 e = getattr(m, "e", 0.5)
 
-                new_m = DCN_C2f(
-                    c1=c1,
-                    c2=c2,
-                    n=n,
-                    shortcut=shortcut,
-                    e=e
-                )
+                new_m = DCN_C2f(c1=c1, c2=c2, n=n, shortcut=shortcut, e=e)
 
                 # ===== 拷贝 YOLOv8 内部属性（非常关键）=====
                 for attr in ["i", "f", "type", "np"]:
@@ -53,9 +48,7 @@ def replace_backbone_c2f_with_dcn(yolo_model):
     print(f"[DCN] Total replaced C2f blocks: {replaced}")
 
 
-
 if __name__ == "__main__":
-
     # -------- 1. 构建模型（一定用 yaml，不用 pt） --------
     yaml_path = r"D:\deeplearning\ultralytics-8.3.225\ultralytics\cfg\models\v8\yolov8.yaml"
     model = YOLO(yaml_path)
@@ -74,12 +67,12 @@ if __name__ == "__main__":
         data=r"yolov8mini_train.yaml",
         epochs=20,
         imgsz=640,
-        batch=8,            # 显存不够就改 4
+        batch=8,  # 显存不够就改 4
         workers=1,
-        cache="ram",        # 内存不够就 False
+        cache="ram",  # 内存不够就 False
         project="results_Optimization",
         name="yolov8n_DCN_20",
         optimizer="AdamW",
         lr0=0.0005,
-        resume=False
+        resume=False,
     )
